@@ -16,7 +16,7 @@ namespace TallerMecanicoAPI.Helpers
             _settings = settings.Value;
         }
 
-        public (string token, DateTime expira) GenerarToken(Usuario usuario, string nombreRol)
+        public (string token, DateTime expira) GenerarToken(Usuario usuario, string nombreRol, List<string>? permisos = null)
         {
             var claims = new List<Claim>
             {
@@ -25,6 +25,10 @@ namespace TallerMecanicoAPI.Helpers
                 new(ClaimTypes.Role, nombreRol),
                 new("nombreCompleto", usuario.NombreCompleto)
             };
+
+            // Permisos granulares asignados al usuario (tabla UsuarioPermiso), además de su rol.
+            if (permisos != null)
+                claims.AddRange(permisos.Select(p => new Claim("permiso", p)));
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

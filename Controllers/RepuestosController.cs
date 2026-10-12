@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TallerMecanicoAPI.DTOs;
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Services;
 
 namespace TallerMecanicoAPI.Controllers
@@ -24,7 +25,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,Bodeguero")]
+        [RequierePermiso("repuestos.crear", Roles = "Administrador,Bodeguero")]
         public async Task<IActionResult> Create(RepuestoDTOCreate dto)
         {
             try
@@ -39,7 +40,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Administrador,Bodeguero")]
+        [RequierePermiso("repuestos.editar", Roles = "Administrador,Bodeguero")]
         public async Task<IActionResult> Update(int id, RepuestoDTOUpdate dto)
         {
             try
@@ -55,7 +56,7 @@ namespace TallerMecanicoAPI.Controllers
 
         // Entrada de mercadería a bodega
         [HttpPatch("{id}/entrada")]
-        [Authorize(Roles = "Administrador,Bodeguero")]
+        [RequierePermiso("repuestos.entrada_stock", Roles = "Administrador,Bodeguero")]
         public async Task<IActionResult> EntradaStock(int id, RepuestoDTOAjusteStock dto)
         {
             try
@@ -70,7 +71,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [RequierePermiso("repuestos.eliminar", Roles = "Administrador")]
         public async Task<IActionResult> Delete(int id)
         {
             try

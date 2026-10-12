@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TallerMecanicoAPI.DTOs;
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Services;
 
 namespace TallerMecanicoAPI.Controllers
@@ -24,7 +25,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,Recepcionista")]
+        [RequierePermiso("clientes.crear", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Create(ClienteDTOCreate dto)
         {
             try
@@ -39,7 +40,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Administrador,Recepcionista")]
+        [RequierePermiso("clientes.editar", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Update(int id, ClienteDTOUpdate dto)
         {
             try
@@ -54,7 +55,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [RequierePermiso("clientes.eliminar", Roles = "Administrador")]
         public async Task<IActionResult> Delete(int id)
         {
             try

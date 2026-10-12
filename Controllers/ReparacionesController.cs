@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TallerMecanicoAPI.DTOs;
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Services;
 
 namespace TallerMecanicoAPI.Controllers
@@ -34,7 +35,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,Mecanico")]
+        [RequierePermiso("reparaciones.crear", Roles = "Administrador,Mecanico")]
         public async Task<IActionResult> Create(ReparacionDTOCreate dto)
         {
             try
@@ -50,7 +51,7 @@ namespace TallerMecanicoAPI.Controllers
 
         // Autoriza o rechaza una reparación pendiente
         [HttpPatch("{id}/autorizar")]
-        [Authorize(Roles = "Administrador")]
+        [RequierePermiso("reparaciones.autorizar", Roles = "Administrador")]
         public async Task<IActionResult> Autorizar(int id, ReparacionDTOAutorizar dto)
         {
             try
@@ -70,7 +71,7 @@ namespace TallerMecanicoAPI.Controllers
 
         // Cambia el estado (p.ej. iniciar o finalizar), respetando dependencias entre reparaciones
         [HttpPatch("{id}/estado")]
-        [Authorize(Roles = "Administrador,Mecanico")]
+        [RequierePermiso("reparaciones.cambiar_estado", Roles = "Administrador,Mecanico")]
         public async Task<IActionResult> CambiarEstado(int id, ReparacionDTOEstado dto)
         {
             try
@@ -89,7 +90,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Administrador")]
+        [RequierePermiso("reparaciones.eliminar", Roles = "Administrador")]
         public async Task<IActionResult> Delete(int id)
         {
             try
@@ -113,7 +114,7 @@ namespace TallerMecanicoAPI.Controllers
         public async Task<IActionResult> GetRepuestos(int id) => Ok(await _repuestoService.GetByReparacion(id));
 
         [HttpPost("{id}/repuestos")]
-        [Authorize(Roles = "Administrador,Bodeguero")]
+        [RequierePermiso("reparaciones.asignar_repuesto", Roles = "Administrador,Bodeguero")]
         public async Task<IActionResult> AddRepuesto(int id, ReparacionRepuestoDTOCreate dto)
         {
             try
@@ -132,7 +133,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpDelete("repuestos/{idDetalle}")]
-        [Authorize(Roles = "Administrador,Bodeguero")]
+        [RequierePermiso("reparaciones.quitar_repuesto", Roles = "Administrador,Bodeguero")]
         public async Task<IActionResult> DeleteRepuesto(int idDetalle)
         {
             try

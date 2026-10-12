@@ -25,7 +25,7 @@ namespace TallerMecanicoAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = "Administrador,Recepcionista")]
+        [RequierePermiso("facturas.generar", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Generar(FacturaDTOCreate dto)
         {
             try

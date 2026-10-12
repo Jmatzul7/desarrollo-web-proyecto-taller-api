@@ -79,6 +79,40 @@ Los `GET` en general están abiertos a cualquier usuario autenticado (sin import
 el rol); los `POST`/`PUT`/`PATCH`/`DELETE` están restringidos según la tabla de
 arriba (ver el detalle en cada endpoint más abajo).
 
+### 3.1 Permisos granulares (además del rol)
+
+Cada acción protegida tiene, además de su lista de roles, un **permiso granular**
+con nombre `recurso.accion` (ej. `reparaciones.autorizar`, `clientes.crear`). Un
+usuario puede desbloquear una acción puntual sin cambiarle el rol, asignándole
+ese permiso individual — útil para casos que no encajan en los 4 roles fijos
+(ej. "que esta Recepcionista en particular también pueda autorizar
+reparaciones").
+
+Se implementa con el atributo `[RequierePermiso("permiso", Roles = "...")]`
+(`Helpers/RequierePermisoAttribute.cs`), que reemplaza a `[Authorize(Roles=...)]`
+en los endpoints de escritura: pasa si el usuario tiene uno de los roles **o**
+el permiso específico. La gestión de usuarios (`UsuariosController`) queda
+deliberadamente fuera de este esquema — sigue siendo 100% exclusiva de
+Administrador, para que nadie pueda auto-otorgarse más acceso.
+
+Los permisos del usuario se cargan como claims (`"permiso"`) dentro del JWT en
+el momento del login — si le asignas o le quitas un permiso a alguien que ya
+tiene sesión activa, el cambio aplica hasta que vuelva a loguearse.
+
+**Administrar permisos** (`PermisosController`, `/api/permisos`):
+
+| Método | Ruta | Rol | Descripción |
+|---|---|---|---|
+| GET | `/` | cualquier autenticado | Catálogo completo de permisos |
+| GET | `/usuario/{idUsuario}` | Administrador | Permisos asignados a ese usuario |
+| POST | `/usuario/{idUsuario}` | Administrador | Asigna un permiso (`{ "idPermiso": N }`) |
+| DELETE | `/usuario/{idUsuario}/{idPermiso}` | Administrador | Quita un permiso |
+
+El script SQL siembra el catálogo completo de permisos (uno por cada acción
+de la tabla de abajo) y un ejemplo real: a `recepcion1` se le asigna
+`reparaciones.autorizar`, así que puede autorizar reparaciones sin ser
+Administrador.
+
 ---
 
 ## 4. Todos los endpoints
@@ -157,6 +191,9 @@ No tiene `DELETE` — una factura no debe poder borrarse.
 ### CatalogosController — `/api/catalogos` (solo lectura, cualquier autenticado)
 `GET /roles`, `GET /estados-orden`, `GET /estados-reparacion` — para llenar
 listas desplegables en el frontend.
+
+### PermisosController — `/api/permisos`
+Ver el detalle completo en la sección **3.1 Permisos granulares** más arriba.
 
 ---
 
@@ -284,6 +321,10 @@ Cliente → Vehiculo → OrdenTrabajo (Recibido)
   `Services` porque coinciden con el orden en que el script SQL los inserta.
   Si alguna vez se necesita reordenar o agregar estados en el script, hay que revisar
   `OrdenTrabajoService`, `ReparacionService` y `FacturaService`.
+- **Si agregas un endpoint de escritura nuevo**: además de `[RequierePermiso("recurso.accion", Roles = "...")]`
+  en el controller, hay que sembrar esa fila nueva en `INSERT INTO Permiso` del
+  script SQL — si no existe en la tabla, nunca se le podrá asignar a nadie desde
+  `/api/permisos`.
 
 ## 7. Cómo probar
 

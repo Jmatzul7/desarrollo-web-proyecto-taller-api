@@ -292,4 +292,51 @@ Authorization: Bearer {{token}}
 
 ###
 
-### =============================================
+### ============================================================
+### 17. DESCARGAR EL PDF DE LA FACTURA
+### En VS Code (REST Client) o Visual Studio, la respuesta trae el
+### PDF; usa "Save Response" / el botón de descarga para guardarlo.
+### ============================================================
+GET {{TallerMecanicoAPI_HostAddress}}/api/facturas/1/pdf
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================
+### 18. PERMISOS GRANULARES
+### Además del rol, cada acción de escritura tiene un permiso suelto
+### (recurso.accion) que se le puede asignar a un usuario puntual sin
+### cambiarle el rol. Ver README sección 3.1.
+### ============================================================
+
+### Catálogo completo de permisos (cualquier usuario autenticado)
+GET {{TallerMecanicoAPI_HostAddress}}/api/permisos
+Authorization: Bearer {{token}}
+
+###
+
+### Permisos asignados a un usuario puntual (solo Administrador)
+GET {{TallerMecanicoAPI_HostAddress}}/api/permisos/usuario/2
+Authorization: Bearer {{token}}
+
+###
+
+### Asignar un permiso a un usuario (solo Administrador)
+### Ejemplo: dejar que recepcion1 (idUsuario=2) autorice reparaciones
+### sin ser Administrador, asignándole "reparaciones.autorizar" (idPermiso=13,
+### según el orden del seed del script SQL).
+POST {{TallerMecanicoAPI_HostAddress}}/api/permisos/usuario/2
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idPermiso": 13
+}
+
+###
+
+### Quitar un permiso a un usuario (solo Administrador)
+DELETE {{TallerMecanicoAPI_HostAddress}}/api/permisos/usuario/2/13
+Authorization: Bearer {{token}}
+
+###

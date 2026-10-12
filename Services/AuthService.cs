@@ -7,11 +7,13 @@ namespace TallerMecanicoAPI.Services
     public class AuthService : IAuthService
     {
         private readonly IUsuarioRepository _usuarioRepo;
+        private readonly IPermisoRepository _permisoRepo;
         private readonly JwtTokenGenerator _jwtGenerator;
 
-        public AuthService(IUsuarioRepository usuarioRepo, JwtTokenGenerator jwtGenerator)
+        public AuthService(IUsuarioRepository usuarioRepo, IPermisoRepository permisoRepo, JwtTokenGenerator jwtGenerator)
         {
             _usuarioRepo = usuarioRepo;
+            _permisoRepo = permisoRepo;
             _jwtGenerator = jwtGenerator;
         }
 
@@ -26,7 +28,8 @@ namespace TallerMecanicoAPI.Services
                 return null;
 
             var nombreRol = usuario.Rol?.Nombre ?? "Sin Rol";
-            var (token, expira) = _jwtGenerator.GenerarToken(usuario, nombreRol);
+            var permisos = await _permisoRepo.GetNombresDeUsuario(usuario.IdUsuario);
+            var (token, expira) = _jwtGenerator.GenerarToken(usuario, nombreRol, permisos);
 
             return new LoginResponseDTO
             {

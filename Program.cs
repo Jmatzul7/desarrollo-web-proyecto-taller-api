@@ -79,6 +79,7 @@ builder.Services.AddScoped<IRepuestoRepository, RepuestoRepositoryEF>();
 builder.Services.AddScoped<IReparacionRepuestoRepository, ReparacionRepuestoRepositoryEF>();
 builder.Services.AddScoped<IFacturaRepository, FacturaRepositoryEF>();
 builder.Services.AddScoped<ICatalogoRepository, CatalogoRepositoryEF>();
+builder.Services.AddScoped<IPermisoRepository, PermisoRepositoryEF>();
 
 // ---- Services ----
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -91,6 +92,7 @@ builder.Services.AddScoped<IReparacionService, ReparacionService>();
 builder.Services.AddScoped<IRepuestoService, RepuestoService>();
 builder.Services.AddScoped<IReparacionRepuestoService, ReparacionRepuestoService>();
 builder.Services.AddScoped<IFacturaService, FacturaService>();
+builder.Services.AddScoped<IPermisoService, PermisoService>();
 
 var app = builder.Build();
 
