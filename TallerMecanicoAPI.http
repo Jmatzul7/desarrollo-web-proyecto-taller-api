@@ -1,13 +1,112 @@
-@TallerMecanicoAPI_HostAddress = http://localhost:5216
+@TallerMecanicoAPI_HostAddress = http://localhost:5000
 @token = PEGAR_AQUI_EL_TOKEN_DEVUELTO_POR_LOGIN
 
-### Login
+### ============================================================
+### 1. LOGIN (usuario admin del seed del script SQL)
+### ============================================================
 POST {{TallerMecanicoAPI_HostAddress}}/api/auth/login
 Content-Type: application/json
 
 {
   "nombreUsuario": "admin",
   "password": "Admin123!"
+}
+
+### Copia el "token" de la respuesta anterior y pégalo arriba en @token
+### antes de seguir con el resto del archivo.
+
+###
+
+### ============================================================
+### 2. CATÁLOGOS (solo lectura, para llenar selects del frontend)
+### ============================================================
+
+### Refrescar la sesión: devuelve un token nuevo con los permisos vigentes en la BD
+### (úsalo después de asignar o quitar un permiso, sin volver a hacer login)
+POST {{TallerMecanicoAPI_HostAddress}}/api/auth/refrescar
+Authorization: Bearer {{token}}
+
+###
+
+### Mecánicos activos (permiso usuarios.ver_mecanicos o rol Admin/Recepcionista/Mecanico)
+GET {{TallerMecanicoAPI_HostAddress}}/api/catalogos/mecanicos
+Authorization: Bearer {{token}}
+
+###
+
+### Roles
+GET {{TallerMecanicoAPI_HostAddress}}/api/catalogos/roles
+Authorization: Bearer {{token}}
+
+###
+
+### Estados de orden de trabajo
+GET {{TallerMecanicoAPI_HostAddress}}/api/catalogos/estados-orden
+Authorization: Bearer {{token}}
+
+###
+
+### Estados de reparación
+GET {{TallerMecanicoAPI_HostAddress}}/api/catalogos/estados-reparacion
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================
+### 3. AUTOREGISTRO DE UN MECÁNICO (endpoint público, sin token)
+### Queda inactivo hasta que el admin lo active (paso 5).
+### ============================================================
+POST {{TallerMecanicoAPI_HostAddress}}/api/auth/registro
+Content-Type: application/json
+
+{
+  "nombreUsuario": "mecanico1",
+  "password": "Taller123!",
+  "nombreCompleto": "Carlos Ramírez",
+  "email": "carlos.ramirez@taller.com",
+  "idRol": 3
+}
+
+###
+
+### ============================================================
+### 4. LISTAR USUARIOS (para ver el id del que acabamos de registrar)
+### Solo Administrador.
+### ============================================================
+GET {{TallerMecanicoAPI_HostAddress}}/api/usuarios
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================
+### 5. ACTIVAR AL MECÁNICO (reemplaza {id} por el id real del paso 4)
+### Sin esto, "mecanico1" no puede hacer login.
+### ============================================================
+PUT {{TallerMecanicoAPI_HostAddress}}/api/usuarios/2
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombreCompleto": "Carlos Ramírez",
+  "email": "carlos.ramirez@taller.com",
+  "idRol": 3,
+  "activo": true
+}
+
+###
+
+### ============================================================
+### 6. CLIENTE
+### ============================================================
+POST {{TallerMecanicoAPI_HostAddress}}/api/clientes
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "nombre": "Juan Pérez",
+  "telefono": "5555-1234",
+  "email": "juan@correo.com",
+  "direccion": "Zona 10, Guatemala"
 }
 
 ###
@@ -18,21 +117,9 @@ Authorization: Bearer {{token}}
 
 ###
 
-### Crear cliente
-POST {{TallerMecanicoAPI_HostAddress}}/api/clientes
-Authorization: Bearer {{token}}
-Content-Type: application/json
-
-{
-  "nombre": "Juan Perez",
-  "telefono": "5555-1234",
-  "email": "juan@correo.com",
-  "direccion": "Zona 10, Guatemala"
-}
-
-###
-
-### Crear vehiculo
+### ============================================================
+### 7. VEHÍCULO (idCliente = id devuelto en el paso 6)
+### ============================================================
 POST {{TallerMecanicoAPI_HostAddress}}/api/vehiculos
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -48,7 +135,10 @@ Content-Type: application/json
 
 ###
 
-### Crear orden de trabajo
+### ============================================================
+### 8. ORDEN DE TRABAJO (idVehiculo del paso 7, idMecanico del paso 5)
+### Queda en estado Recibido (1).
+### ============================================================
 POST {{TallerMecanicoAPI_HostAddress}}/api/ordenestrabajo
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -56,12 +146,21 @@ Content-Type: application/json
 {
   "idVehiculo": 1,
   "idMecanico": 2,
-  "observaciones": "El vehiculo no enciende"
+  "observaciones": "El vehículo no enciende"
 }
 
 ###
 
-### Registrar diagnostico
+### Listar órdenes de trabajo
+GET {{TallerMecanicoAPI_HostAddress}}/api/ordenestrabajo
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================
+### 9. DIAGNÓSTICO (idOrden del paso 8)
+### Pasa automáticamente la orden a En Diagnostico (2).
+### ============================================================
 POST {{TallerMecanicoAPI_HostAddress}}/api/diagnosticos
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -69,26 +168,60 @@ Content-Type: application/json
 {
   "idOrden": 1,
   "idMecanico": 2,
-  "descripcionFalla": "Bateria descargada y terminales oxidados"
+  "descripcionFalla": "Batería descargada y terminales oxidados"
 }
 
 ###
 
-### Registrar reparacion (queda Pendiente)
+### ============================================================
+### 10. REPUESTO (bodega) — créalo si todavía no existe
+### ============================================================
+POST {{TallerMecanicoAPI_HostAddress}}/api/repuestos
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "codigo": "BAT-001",
+  "nombre": "Batería 12V 45Ah",
+  "descripcion": "Batería de arranque estándar",
+  "existencia": 10,
+  "precioUnitario": 450.00
+}
+
+###
+
+### Entrada de mercadería a bodega (suma existencia) — opcional
+PATCH {{TallerMecanicoAPI_HostAddress}}/api/repuestos/1/entrada
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "cantidad": 5
+}
+
+###
+
+### ============================================================
+### 11. REPARACIÓN (idDiagnostico del paso 9)
+### Queda en estado Pendiente (1).
+### ============================================================
 POST {{TallerMecanicoAPI_HostAddress}}/api/reparaciones
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
   "idDiagnostico": 1,
-  "descripcion": "Cambio de bateria y limpieza de terminales",
+  "descripcion": "Cambio de batería y limpieza de terminales",
   "orden": 1,
   "costoManoObra": 150.00
 }
 
 ###
 
-### Autorizar reparacion
+### ============================================================
+### 12. AUTORIZAR LA REPARACIÓN — solo Administrador.
+### Sin este paso no puede pasar a "En Proceso".
+### ============================================================
 PATCH {{TallerMecanicoAPI_HostAddress}}/api/reparaciones/1/autorizar
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -99,7 +232,25 @@ Content-Type: application/json
 
 ###
 
-### Usar un repuesto en la reparacion (requiere justificacion)
+### ============================================================
+### 13. INICIAR LA REPARACIÓN (idEstadoReparacion = 4, En Proceso)
+### Falla si no está Autorizada, o si depende de una reparación previa
+### que todavía no está Finalizada.
+### ============================================================
+PATCH {{TallerMecanicoAPI_HostAddress}}/api/reparaciones/1/estado
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idEstadoReparacion": 4
+}
+
+###
+
+### ============================================================
+### 14. USAR UN REPUESTO EN LA REPARACIÓN (requiere justificación)
+### Valida existencia en bodega y la descuenta.
+### ============================================================
 POST {{TallerMecanicoAPI_HostAddress}}/api/reparaciones/1/repuestos
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -107,12 +258,37 @@ Content-Type: application/json
 {
   "idRepuesto": 1,
   "cantidad": 1,
-  "justificacion": "Bateria original agotada, se reemplaza segun diagnostico"
+  "justificacion": "Batería original agotada, se reemplaza según diagnóstico"
 }
 
 ###
 
-### Generar factura de la orden
+### Ver los repuestos usados en la reparación
+GET {{TallerMecanicoAPI_HostAddress}}/api/reparaciones/1/repuestos
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================
+### 15. FINALIZAR LA REPARACIÓN (idEstadoReparacion = 5, Finalizada)
+### Repite los pasos 11–15 por cada reparación que tenga la orden.
+### ============================================================
+PATCH {{TallerMecanicoAPI_HostAddress}}/api/reparaciones/1/estado
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "idEstadoReparacion": 5
+}
+
+###
+
+### ============================================================
+### 16. GENERAR LA FACTURA (idOrden del paso 8)
+### Suma mano de obra + repuestos de las reparaciones Finalizadas,
+### y pasa la orden a estado Facturada (5). Falla si no hay ninguna
+### reparación finalizada todavía, o si la orden ya tiene factura.
+### ============================================================
 POST {{TallerMecanicoAPI_HostAddress}}/api/facturas
 Authorization: Bearer {{token}}
 Content-Type: application/json
@@ -120,5 +296,21 @@ Content-Type: application/json
 {
   "idOrden": 1
 }
+
+###
+
+### Ver la factura generada
+GET {{TallerMecanicoAPI_HostAddress}}/api/facturas/1
+Authorization: Bearer {{token}}
+
+###
+
+### ============================================================
+### 17. DESCARGAR EL PDF DE LA FACTURA
+### En VS Code (REST Client) o Visual Studio, la respuesta trae el
+### PDF; usa "Save Response" / el botón de descarga para guardarlo.
+### ============================================================
+GET {{TallerMecanicoAPI_HostAddress}}/api/facturas/1/pdf
+Authorization: Bearer {{token}}
 
 ###

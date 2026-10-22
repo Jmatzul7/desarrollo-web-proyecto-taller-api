@@ -75,9 +75,11 @@ Usuario N---N Permiso (vía UsuarioPermiso)
 | **Bodeguero** | Gestionar repuestos (alta, entrada de stock) y autorizar su salida hacia una reparación |
 
 Todo endpoint sin `[AllowAnonymous]` requiere `Authorization: Bearer {token}`.
-Los `GET` en general están abiertos a cualquier usuario autenticado (sin importar
-el rol); los `POST`/`PUT`/`PATCH`/`DELETE` están restringidos según la tabla de
-arriba (ver el detalle en cada endpoint más abajo).
+Los `GET` de clientes, vehículos, repuestos y facturas están protegidos por
+permisos de **visibilidad** (`*.ver`, ver 3.2); el resto de los `GET` (órdenes,
+diagnósticos, reparaciones, catálogos) siguen abiertos a cualquier usuario
+autenticado. Los `POST`/`PUT`/`PATCH`/`DELETE` están restringidos según la tabla
+de arriba (ver el detalle en cada endpoint más abajo).
 
 ### 3.1 Permisos granulares (además del rol)
 
@@ -98,6 +100,33 @@ Administrador, para que nadie pueda auto-otorgarse más acceso.
 Los permisos del usuario se cargan como claims (`"permiso"`) dentro del JWT en
 el momento del login — si le asignas o le quitas un permiso a alguien que ya
 tiene sesión activa, el cambio aplica hasta que vuelva a loguearse.
+
+### 3.2 Permisos de visibilidad y refresco de la sesión
+
+Además de los permisos de acción (`crear`, `editar`, ...), hay permisos de **ver**
+que controlan qué secciones de la aplicación aparecen. Se aplican igual que los
+demás: pasa quien tenga uno de los roles **o** el permiso.
+
+| Permiso | Roles que lo tienen por defecto | Qué habilita |
+|---|---|---|
+| `clientes.ver` | Administrador, Recepcionista | `GET /api/clientes` y `/{id}` (menú Clientes) |
+| `vehiculos.ver` | Administrador, Recepcionista | `GET /api/vehiculos` y `/{id}` (menú Vehículos) |
+| `repuestos.ver` | Administrador, Bodeguero, Mecanico | `GET /api/repuestos` y `/{id}` (menú Repuestos / Bodega) |
+| `facturas.ver` | Administrador, Recepcionista | `GET /api/facturas` y `/{id}` (menú Facturas) |
+| `facturas.descargar_pdf` | Administrador, Recepcionista | `GET /api/facturas/{id}/pdf` (botón "Descargar PDF") |
+| `usuarios.ver_mecanicos` | Administrador, Recepcionista, Mecanico | `GET /api/catalogos/mecanicos` (lista para asignar mecánicos) |
+
+Ejemplo: a `bodega1` (Bodeguero) no le aparece el menú Clientes. Si un Administrador
+le asigna `clientes.ver`, en pocos segundos le aparece el menú y puede listar clientes.
+
+**Refresco de permisos sin cerrar sesión:** `POST /api/auth/refrescar` (requiere
+token) vuelve a leer el rol y los permisos desde la base de datos y devuelve un
+token nuevo con la misma forma que el login. El frontend lo llama cada ~20 segundos
+y al volver a la pestaña, y avisa al usuario cuando le asignan o le quitan un
+permiso. Si la cuenta fue desactivada responde `401`.
+
+**Importante al migrar:** ejecutar `Migracion_PermisosNuevos.sql` una vez sobre la
+base existente para crear los 6 permisos nuevos.
 
 **Administrar permisos** (`PermisosController`, `/api/permisos`):
 
@@ -121,6 +150,7 @@ Administrador.
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | POST | `/login` | público | Devuelve el JWT |
+| POST | `/refrescar` | cualquier autenticado | Reemite el JWT con el rol y los permisos vigentes (ver 3.2) |
 | POST | `/registro` | público | Autoregistro; no permite rol Administrador; la cuenta queda `Activo=false` hasta que un Administrador la active |
 
 ### UsuariosController — `/api/usuarios` (todo restringido a **Administrador**)
@@ -135,13 +165,13 @@ Administrador.
 ### ClientesController — `/api/clientes`
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| GET | `/`, `/{id}` | cualquier autenticado | Listar / obtener |
+| GET | `/`, `/{id}` | Administrador, Recepcionista (o permiso `clientes.ver`) | Listar / obtener |
 | POST | `/` | Administrador, Recepcionista | Crear |
 | PUT | `/{id}` | Administrador, Recepcionista | Actualizar |
 | DELETE | `/{id}` | Administrador | Soft delete (`Activo=false`) |
 
 ### VehiculosController — `/api/vehiculos`
-Igual patrón que Clientes. `POST` valida que `IdCliente` exista y que la `Placa` sea única.
+Igual patrón que Clientes (`GET` con permiso `vehiculos.ver`). `POST` valida que `IdCliente` exista y que la `Placa` sea única.
 
 ### OrdenesTrabajoController — `/api/ordenestrabajo`
 | Método | Ruta | Rol | Descripción |
@@ -173,7 +203,7 @@ Igual patrón que Clientes. `POST` valida que `IdCliente` exista y que la `Placa
 ### RepuestosController — `/api/repuestos`
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| GET | `/`, `/{id}` | cualquiera | Listar / obtener |
+| GET | `/`, `/{id}` | Administrador, Bodeguero, Mecanico (o permiso `repuestos.ver`) | Listar / obtener |
 | POST | `/` | Administrador, Bodeguero | Crea repuesto (valida `Codigo` único, `Existencia >= 0`, `PrecioUnitario > 0`) |
 | PUT | `/{id}` | Administrador, Bodeguero | Actualiza nombre/descripción/precio/activo |
 | PATCH | `/{id}/entrada` | Administrador, Bodeguero | Suma existencia (entrada de mercadería a bodega) |
@@ -182,15 +212,19 @@ Igual patrón que Clientes. `POST` valida que `IdCliente` exista y que la `Placa
 ### FacturasController — `/api/facturas`
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| GET | `/`, `/{id}` | cualquiera | Listar / obtener |
+| GET | `/`, `/{id}` | Administrador, Recepcionista (o permiso `facturas.ver`) | Listar / obtener |
 | POST | `/` | Administrador, Recepcionista | Genera la factura de una orden (suma mano de obra + repuestos de las reparaciones **Finalizadas**). Falla si la orden ya tiene factura o si no hay reparaciones finalizadas |
-| GET | `/{id}/pdf` | cualquiera | Descarga el PDF de la factura |
+| GET | `/{id}/pdf` | Administrador, Recepcionista (o permiso `facturas.descargar_pdf`) | Descarga el PDF de la factura |
 
 No tiene `DELETE` — una factura no debe poder borrarse.
 
 ### CatalogosController — `/api/catalogos` (solo lectura, cualquier autenticado)
 `GET /roles`, `GET /estados-orden`, `GET /estados-reparacion` — para llenar
 listas desplegables en el frontend.
+
+`GET /mecanicos` — mecánicos activos (`idUsuario`, `nombreUsuario`, `nombreCompleto`)
+para asignar órdenes sin exponer `/api/usuarios`. Requiere Administrador,
+Recepcionista, Mecanico o el permiso `usuarios.ver_mecanicos`.
 
 ### PermisosController — `/api/permisos`
 Ver el detalle completo en la sección **3.1 Permisos granulares** más arriba.

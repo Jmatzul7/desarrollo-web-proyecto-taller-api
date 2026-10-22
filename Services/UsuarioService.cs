@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+using Microsoft.EntityFrameworkCore;
 using TallerMecanicoAPI.DTOs;
 using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Models;
@@ -89,6 +91,82 @@ namespace TallerMecanicoAPI.Services
             usuario.IdRol = dto.IdRol;
             usuario.Activo = dto.Activo;
 
+            await _repo.Update(usuario);
+        }
+
+        // ---------------------------------------------------------------------
+        // Perfil propio
+        // ---------------------------------------------------------------------
+
+        private const int LongitudMinimaPassword = 6;
+        private static readonly Regex PatronNombreUsuario = new(@"^[A-Za-z0-9._-]{3,50}$", RegexOptions.Compiled);
+
+        public async Task<UsuarioDTOResponse?> GetPerfil(int idUsuario) => await GetById(idUsuario);
+
+        public async Task<bool> NombreUsuarioDisponible(string nombreUsuario, int idUsuarioActual)
+        {
+            var existente = await _repo.GetByNombreUsuario((nombreUsuario ?? "").Trim());
+            return existente == null || existente.IdUsuario == idUsuarioActual;
+        }
+
+        public async Task ActualizarPerfil(int idUsuario, PerfilDTOUpdate dto)
+        {
+            var usuario = await _repo.GetById(idUsuario)
+                ?? throw new ArgumentException("El usuario no fue encontrado.");
+
+            var nombreUsuario = (dto.NombreUsuario ?? "").Trim();
+            var nombreCompleto = (dto.NombreCompleto ?? "").Trim();
+            var email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
+
+            if (!PatronNombreUsuario.IsMatch(nombreUsuario))
+                throw new ArgumentException("El nombre de usuario debe tener entre 3 y 50 caracteres: letras, números, punto, guion o guion bajo.");
+
+            if (nombreCompleto.Length == 0)
+                throw new ArgumentException("El nombre completo es obligatorio.");
+
+            if (email != null && !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(email))
+                throw new ArgumentException("El correo electrónico no es válido.");
+
+            // Solo se consulta si el nombre de usuario realmente cambió.
+            if (!string.Equals(usuario.NombreUsuario, nombreUsuario, StringComparison.Ordinal) &&
+                !await NombreUsuarioDisponible(nombreUsuario, idUsuario))
+                throw new ArgumentException("Ya existe otro usuario con ese nombre de usuario.");
+
+            usuario.NombreUsuario = nombreUsuario;
+            usuario.NombreCompleto = nombreCompleto;
+            usuario.Email = email;
+
+            try
+            {
+                await _repo.Update(usuario);
+            }
+            catch (DbUpdateException)
+            {
+                // Otra cuenta tomó el mismo nombre justo entre la validación y el guardado
+                // (el índice UNIQUE de la tabla Usuario lo impide).
+                throw new ArgumentException("Ya existe otro usuario con ese nombre de usuario.");
+            }
+        }
+
+        public async Task CambiarPassword(int idUsuario, CambiarPasswordDTO dto)
+        {
+            var usuario = await _repo.GetById(idUsuario)
+                ?? throw new ArgumentException("El usuario no fue encontrado.");
+
+            if (string.IsNullOrEmpty(dto.PasswordActual) || string.IsNullOrEmpty(dto.PasswordNueva))
+                throw new ArgumentException("Debes indicar la contraseña actual y la nueva.");
+
+            if (!PasswordHasher.Verify(dto.PasswordActual, usuario.PasswordHash))
+                throw new ArgumentException("La contraseña actual no es correcta.");
+
+            if (dto.PasswordNueva.Length < LongitudMinimaPassword)
+                throw new ArgumentException($"La nueva contraseña debe tener al menos {LongitudMinimaPassword} caracteres.");
+
+            if (dto.PasswordNueva == dto.PasswordActual)
+                throw new ArgumentException("La nueva contraseña debe ser distinta de la actual.");
+
+            // Aquí solo cambia el hash: el nombre de usuario no se lee del cliente ni se valida.
+            usuario.PasswordHash = PasswordHasher.Hash(dto.PasswordNueva);
             await _repo.Update(usuario);
         }
 

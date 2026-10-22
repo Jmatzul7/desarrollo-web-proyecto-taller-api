@@ -133,7 +133,9 @@ namespace TallerMecanicoAPI.Data
                 e.HasOne(x => x.Orden).WithMany().HasForeignKey(x => x.IdOrden);
                 e.Property(x => x.CostoManoObra).HasColumnType("decimal(10,2)");
                 e.Property(x => x.CostoRepuestos).HasColumnType("decimal(10,2)");
-                e.Property(x => x.Total).HasColumnType("decimal(10,2)");
+                e.Property(x => x.Total)
+                    .HasColumnType("decimal(10,2)")
+                    .HasComputedColumnSql("[CostoManoObra] + [CostoRepuestos]", stored: true);
             });
         }
     }

@@ -7,7 +7,8 @@ namespace TallerMecanicoAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Administrador")]
+    ///[Authorize (Roles = "Administrador")]
+    [Authorize]
     public class UsuariosController : ControllerBase
     {
         private readonly IUsuarioService _service;

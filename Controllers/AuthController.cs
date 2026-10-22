@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using TallerMecanicoAPI.DTOs;
 using TallerMecanicoAPI.Services;
@@ -26,6 +27,25 @@ namespace TallerMecanicoAPI.Controllers
 
             if (respuesta == null)
                 return Unauthorized(new { mensaje = "Usuario o contraseña incorrectos." });
+
+            return Ok(respuesta);
+        }
+
+        // Reemite el token con el rol y los permisos vigentes en la base de datos.
+        // Así, cuando un Administrador asigna o quita un permiso, el usuario afectado
+        // lo recibe en su siguiente refresco sin tener que volver a iniciar sesión.
+        [Authorize]
+        [HttpPost("refrescar")]
+        public async Task<IActionResult> Refrescar()
+        {
+            var claimId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(claimId, out var idUsuario))
+                return Unauthorized(new { mensaje = "Token inválido." });
+
+            var respuesta = await _authService.Refrescar(idUsuario);
+
+            if (respuesta == null)
+                return Unauthorized(new { mensaje = "La cuenta ya no está disponible." });
 
             return Ok(respuesta);
         }

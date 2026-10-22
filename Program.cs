@@ -41,6 +41,25 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+
+/* ---- CORS ---- */
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:3000",
+                "https://localhost:3000",
+                "http://localhost:4200",
+                "https://localhost:4200"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+
 // ---- JWT ----
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddSingleton<JwtTokenGenerator>();
@@ -108,7 +127,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("FrontendPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 

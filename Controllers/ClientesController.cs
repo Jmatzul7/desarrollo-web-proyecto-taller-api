@@ -15,9 +15,11 @@ namespace TallerMecanicoAPI.Controllers
         public ClientesController(IClienteService service) => _service = service;
 
         [HttpGet]
+        [RequierePermiso("clientes.ver", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Get() => Ok(await _service.GetAll());
 
         [HttpGet("{id}")]
+        [RequierePermiso("clientes.ver", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Get(int id)
         {
             var data = await _service.GetById(id);

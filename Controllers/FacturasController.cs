@@ -15,9 +15,11 @@ namespace TallerMecanicoAPI.Controllers
         public FacturasController(IFacturaService service) => _service = service;
 
         [HttpGet]
+        [RequierePermiso("facturas.ver", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Get() => Ok(await _service.GetAll());
 
         [HttpGet("{id}")]
+        [RequierePermiso("facturas.ver", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> Get(int id)
         {
             var data = await _service.GetById(id);
@@ -45,6 +47,7 @@ namespace TallerMecanicoAPI.Controllers
 
         // Descarga el PDF de una factura ya generada
         [HttpGet("{id}/pdf")]
+        [RequierePermiso("facturas.descargar_pdf", Roles = "Administrador,Recepcionista")]
         public async Task<IActionResult> DescargarPdf(int id)
         {
             var detalle = await _service.ObtenerDetalle(id);
