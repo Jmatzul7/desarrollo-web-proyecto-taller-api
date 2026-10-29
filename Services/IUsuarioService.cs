@@ -1,3 +1,4 @@
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.DTOs;
 
 namespace TallerMecanicoAPI.Services
@@ -5,6 +6,7 @@ namespace TallerMecanicoAPI.Services
     public interface IUsuarioService
     {
         Task<List<UsuarioDTOResponse>> GetAll();
+        Task<ResultadoPaginado<UsuarioDTOResponse>> GetPaginado(ConsultaPaginada consulta);
         Task<UsuarioDTOResponse?> GetById(int id);
         Task Add(UsuarioDTOCreate dto);
 

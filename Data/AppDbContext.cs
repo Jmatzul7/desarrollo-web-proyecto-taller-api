@@ -13,6 +13,7 @@ namespace TallerMecanicoAPI.Data
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<Permiso> Permisos { get; set; }
         public DbSet<UsuarioPermiso> UsuarioPermisos { get; set; }
+        public DbSet<RolPermiso> RolPermisos { get; set; }
         public DbSet<Cliente> Clientes { get; set; }
         public DbSet<Vehiculo> Vehiculos { get; set; }
         public DbSet<EstadoOrden> EstadosOrden { get; set; }
@@ -51,6 +52,12 @@ namespace TallerMecanicoAPI.Data
             {
                 e.ToTable("UsuarioPermiso");
                 e.HasKey(x => new { x.IdUsuario, x.IdPermiso });
+            });
+
+            modelBuilder.Entity<RolPermiso>(e =>
+            {
+                e.ToTable("RolPermiso");
+                e.HasKey(x => new { x.IdRol, x.IdPermiso });
             });
 
             modelBuilder.Entity<Cliente>(e =>
@@ -133,6 +140,8 @@ namespace TallerMecanicoAPI.Data
                 e.HasOne(x => x.Orden).WithMany().HasForeignKey(x => x.IdOrden);
                 e.Property(x => x.CostoManoObra).HasColumnType("decimal(10,2)");
                 e.Property(x => x.CostoRepuestos).HasColumnType("decimal(10,2)");
+                // En la base de datos Total es una columna calculada (CostoManoObra + CostoRepuestos):
+                // EF no debe incluirla en el INSERT ni en el UPDATE.
                 e.Property(x => x.Total)
                     .HasColumnType("decimal(10,2)")
                     .HasComputedColumnSql("[CostoManoObra] + [CostoRepuestos]", stored: true);

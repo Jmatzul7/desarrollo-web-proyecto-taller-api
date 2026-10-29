@@ -1,3 +1,4 @@
+using TallerMecanicoAPI.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TallerMecanicoAPI.DTOs;
@@ -7,15 +8,15 @@ namespace TallerMecanicoAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    ///[Authorize (Roles = "Administrador")]
-    [Authorize]
+    [Authorize(Roles = "Administrador")]
     public class UsuariosController : ControllerBase
     {
         private readonly IUsuarioService _service;
         public UsuariosController(IUsuarioService service) => _service = service;
 
         [HttpGet]
-        public async Task<IActionResult> Get() => Ok(await _service.GetAll());
+        public async Task<IActionResult> Get([FromQuery] ConsultaPaginada consulta) =>
+            consulta.Pagina.HasValue ? Ok(await _service.GetPaginado(consulta)) : Ok(await _service.GetAll());
 
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id)

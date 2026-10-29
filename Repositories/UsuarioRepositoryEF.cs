@@ -13,6 +13,17 @@ namespace TallerMecanicoAPI.Repositories
         public async Task<List<Usuario>> GetAll() =>
             await _context.Usuarios.Include(u => u.Rol).ToListAsync();
 
+        public async Task<ResultadoPaginado<Usuario>> GetPaginado(ConsultaPaginada consulta)
+        {
+            var q = _context.Usuarios.Include(u => u.Rol).AsQueryable();
+            var b = consulta.TextoBusqueda;
+            if (b != null)
+                q = q.Where(u => u.NombreUsuario.Contains(b) || u.NombreCompleto.Contains(b) ||
+                                 (u.Email != null && u.Email.Contains(b)));
+            if (consulta.Activo.HasValue) q = q.Where(u => u.Activo == consulta.Activo.Value);
+            return await ResultadoPaginado<Usuario>.CrearAsync(q.OrderBy(u => u.NombreCompleto).ThenBy(u => u.IdUsuario), consulta);
+        }
+
         public async Task<Usuario?> GetById(int id) =>
             await _context.Usuarios.Include(u => u.Rol).FirstOrDefaultAsync(u => u.IdUsuario == id);
 

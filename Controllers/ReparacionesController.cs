@@ -14,30 +14,58 @@ namespace TallerMecanicoAPI.Controllers
     {
         private readonly IReparacionService _service;
         private readonly IReparacionRepuestoService _repuestoService;
+        private readonly IOrdenTrabajoService _ordenes;
 
-        public ReparacionesController(IReparacionService service, IReparacionRepuestoService repuestoService)
+        public ReparacionesController(
+            IReparacionService service,
+            IReparacionRepuestoService repuestoService,
+            IOrdenTrabajoService ordenes)
         {
             _service = service;
             _repuestoService = repuestoService;
+            _ordenes = ordenes;
+        }
+
+        private static readonly object NoEncontrada = new { mensaje = "La reparación no fue encontrada." };
+
+        // Un usuario sin "ordenes.ver_todas" solo accede a las reparaciones de sus órdenes asignadas.
+        private async Task<bool> PuedeAccederReparacion(int idReparacion)
+        {
+            if (AlcanceOrdenes.IdMecanicoRestringido(User) == null) return true;
+            var idOrden = await _service.GetIdOrdenDeReparacion(idReparacion);
+            return idOrden == null || await AlcanceOrdenes.PuedeAccederAsync(User, _ordenes, idOrden.Value);
         }
 
         private int UsuarioActualId =>
             int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
         [HttpGet]
-        public async Task<IActionResult> Get() => Ok(await _service.GetAll());
+        public async Task<IActionResult> Get()
+        {
+            var restringido = AlcanceOrdenes.IdMecanicoRestringido(User);
+            return Ok(restringido.HasValue ? await _service.GetPorMecanico(restringido.Value) : await _service.GetAll());
+        }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id)
         {
             var data = await _service.GetById(id);
-            return data == null ? NotFound() : Ok(data);
+            if (data == null) return NotFound();
+            if (!await PuedeAccederReparacion(id)) return NotFound();
+            return Ok(data);
         }
 
         [HttpPost]
         [RequierePermiso("reparaciones.crear", Roles = "Administrador,Mecanico")]
         public async Task<IActionResult> Create(ReparacionDTOCreate dto)
         {
+            if (AlcanceOrdenes.IdMecanicoRestringido(User) != null)
+            {
+                var idOrden = await _service.GetIdOrdenDeDiagnostico(dto.IdDiagnostico);
+                if (idOrden != null && !await AlcanceOrdenes.PuedeAccederAsync(User, _ordenes, idOrden.Value))
+                    return NotFound(new { mensaje = "El diagnóstico indicado no existe." });
+            }
+
             try
             {
                 await _service.Add(dto);
@@ -74,6 +102,8 @@ namespace TallerMecanicoAPI.Controllers
         [RequierePermiso("reparaciones.cambiar_estado", Roles = "Administrador,Mecanico")]
         public async Task<IActionResult> CambiarEstado(int id, ReparacionDTOEstado dto)
         {
+            if (!await PuedeAccederReparacion(id)) return NotFound(NoEncontrada);
+
             try
             {
                 await _service.CambiarEstado(id, dto);
@@ -111,7 +141,11 @@ namespace TallerMecanicoAPI.Controllers
         // ---- Repuestos usados en la reparación ----
 
         [HttpGet("{id}/repuestos")]
-        public async Task<IActionResult> GetRepuestos(int id) => Ok(await _repuestoService.GetByReparacion(id));
+        public async Task<IActionResult> GetRepuestos(int id)
+        {
+            if (!await PuedeAccederReparacion(id)) return NotFound(NoEncontrada);
+            return Ok(await _repuestoService.GetByReparacion(id));
+        }
 
         [HttpPost("{id}/repuestos")]
         [RequierePermiso("reparaciones.asignar_repuesto", Roles = "Administrador,Bodeguero")]

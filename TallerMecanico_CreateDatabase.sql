@@ -60,6 +60,16 @@ CREATE TABLE UsuarioPermiso (
 );
 GO
 
+-- Permisos asignados a un ROL completo (los heredan todos sus usuarios).
+CREATE TABLE RolPermiso (
+    IdRol      INT NOT NULL,
+    IdPermiso  INT NOT NULL,
+    CONSTRAINT PK_RolPermiso PRIMARY KEY (IdRol, IdPermiso),
+    CONSTRAINT FK_RolPermiso_Rol FOREIGN KEY (IdRol) REFERENCES Rol(IdRol),
+    CONSTRAINT FK_RolPermiso_Permiso FOREIGN KEY (IdPermiso) REFERENCES Permiso(IdPermiso)
+);
+GO
+
 /* ============================================================
    2. CLIENTES Y VEHÍCULOS
    ============================================================ */
@@ -277,7 +287,10 @@ INSERT INTO Permiso (Nombre, Descripcion) VALUES
     (N'repuestos.ver',               N'Ver el inventario de repuestos de la bodega'),
     (N'facturas.ver',                N'Ver el listado y el detalle de facturas'),
     (N'facturas.descargar_pdf',      N'Descargar el PDF de una factura'),
-    (N'usuarios.ver_mecanicos',      N'Ver la lista de mecánicos para asignar órdenes de trabajo');
+    (N'usuarios.ver_mecanicos',      N'Ver la lista de mecánicos para asignar órdenes de trabajo'),
+    -- Alcance de las órdenes: sin este permiso un Mecánico solo ve las que tiene asignadas
+    (N'ordenes.ver_todas',           N'Ver todas las órdenes de trabajo (no solo las asignadas al usuario)'),
+    (N'ordenes.reasignar',           N'Reasignar el mecánico de una orden de trabajo');
 GO
 
 -- Ejemplo real del caso de uso: María (Recepcionista, IdUsuario=2) recibe el

@@ -314,3 +314,68 @@ GET {{TallerMecanicoAPI_HostAddress}}/api/facturas/1/pdf
 Authorization: Bearer {{token}}
 
 ###
+
+### ---- Perfil propio (cualquier usuario autenticado) ----
+GET {{TallerMecanicoAPI_HostAddress}}/api/perfil
+Authorization: Bearer {{token}}
+
+###
+GET {{TallerMecanicoAPI_HostAddress}}/api/perfil/nombre-usuario-disponible?nombreUsuario=nuevo.usuario
+Authorization: Bearer {{token}}
+
+###
+PUT {{TallerMecanicoAPI_HostAddress}}/api/perfil
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "nombreUsuario": "nuevo.usuario", "nombreCompleto": "Nombre Apellido", "email": "correo@ejemplo.com" }
+
+###
+PUT {{TallerMecanicoAPI_HostAddress}}/api/perfil/password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "passwordActual": "actual123", "passwordNueva": "nueva123" }
+
+### ---- Permisos por rol (solo Administrador) ----
+GET {{TallerMecanicoAPI_HostAddress}}/api/permisos/por-defecto
+Authorization: Bearer {{token}}
+
+###
+GET {{TallerMecanicoAPI_HostAddress}}/api/permisos/rol/2
+Authorization: Bearer {{token}}
+
+###
+POST {{TallerMecanicoAPI_HostAddress}}/api/permisos/rol/2
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "idPermiso": 13 }
+
+###
+DELETE {{TallerMecanicoAPI_HostAddress}}/api/permisos/rol/2/13
+Authorization: Bearer {{token}}
+
+### ---- Listados paginados (agregar pagina para activar la paginación) ----
+GET {{TallerMecanicoAPI_HostAddress}}/api/clientes?pagina=1&tamano=10&buscar=perez
+Authorization: Bearer {{token}}
+
+###
+GET {{TallerMecanicoAPI_HostAddress}}/api/ordenestrabajo?pagina=1&tamano=20&estado=3
+Authorization: Bearer {{token}}
+
+###
+GET {{TallerMecanicoAPI_HostAddress}}/api/repuestos?pagina=1&tamano=10&stockBajo=true
+Authorization: Bearer {{token}}
+
+###
+# Órdenes: un Mecánico solo recibe las asignadas a él; Admin/Recepcionista (o permiso ordenes.ver_todas) reciben todas
+GET {{TallerMecanicoAPI_HostAddress}}/api/ordenestrabajo?pagina=1&tamano=10
+Authorization: Bearer {{token}}
+
+###
+PATCH {{TallerMecanicoAPI_HostAddress}}/api/ordenestrabajo/1/mecanico
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "idMecanico": 3 }

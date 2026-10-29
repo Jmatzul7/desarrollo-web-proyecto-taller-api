@@ -5,8 +5,8 @@ namespace TallerMecanicoAPI.Helpers
 {
     // Autoriza la acción si el usuario autenticado cumple AL MENOS UNA de dos condiciones:
     //   1) su Rol está dentro de "Roles" (igual que [Authorize(Roles = "...")]), o
-    //   2) tiene asignado el permiso granular "permiso" (tabla UsuarioPermiso),
-    //      sin importar su rol.
+    //   2) tiene el permiso granular "permiso", sin importar su rol: ya sea asignado
+    //      a él (tabla UsuarioPermiso) o a su rol (tabla RolPermiso).
     //
     // Esto permite, por ejemplo, que un Recepcionista puntual autorice reparaciones
     // sin tener que convertirlo en Administrador: basta con asignarle el permiso
@@ -20,6 +20,9 @@ namespace TallerMecanicoAPI.Helpers
     {
         private readonly string _permiso;
         public string Roles { get; set; } = "";
+
+        // Nombre del permiso (se expone para poder listar los permisos por defecto de cada rol).
+        public string Permiso => _permiso;
 
         public RequierePermisoAttribute(string permiso) => _permiso = permiso;
 

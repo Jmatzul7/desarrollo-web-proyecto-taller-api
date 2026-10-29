@@ -1,3 +1,4 @@
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Models;
 
 namespace TallerMecanicoAPI.Repositories
@@ -5,6 +6,7 @@ namespace TallerMecanicoAPI.Repositories
     public interface IVehiculoRepository
     {
         Task<List<Vehiculo>> GetAll();
+        Task<ResultadoPaginado<Vehiculo>> GetPaginado(ConsultaPaginada consulta);
         Task<Vehiculo?> GetById(int id);
         Task<Vehiculo?> GetByPlaca(string placa);
         Task Add(Vehiculo vehiculo);

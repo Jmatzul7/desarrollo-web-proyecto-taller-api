@@ -1,4 +1,5 @@
 using TallerMecanicoAPI.DTOs;
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Models;
 using TallerMecanicoAPI.Repositories;
 
@@ -31,6 +32,8 @@ namespace TallerMecanicoAPI.Services
             var orden = await _ordenRepo.GetById(dto.IdOrden)
                 ?? throw new ArgumentException("La orden de trabajo indicada no existe.");
 
+            FlujoTrabajo.ExigirOrdenAbierta(orden, "registrar un diagnóstico");
+
             var mecanico = await _usuarioRepo.GetById(dto.IdMecanico)
                 ?? throw new ArgumentException("El mecánico indicado no existe.");
 
@@ -46,9 +49,13 @@ namespace TallerMecanicoAPI.Services
 
             await _repo.Add(diagnostico);
 
-            // Al registrar un diagnóstico, la orden pasa a estado "En Diagnostico"
-            orden.IdEstadoOrden = 2;
-            await _ordenRepo.Update(orden);
+            // Al registrar un diagnóstico, una orden recién recibida pasa a "En Diagnostico".
+            // Si ya está más avanzada (En Reparación / Finalizada) no se retrocede su estado.
+            if (orden.IdEstadoOrden == FlujoTrabajo.OrdenRecibido)
+            {
+                orden.IdEstadoOrden = FlujoTrabajo.OrdenEnDiagnostico;
+                await _ordenRepo.Update(orden);
+            }
         }
 
         public async Task Delete(int id)

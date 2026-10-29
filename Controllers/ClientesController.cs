@@ -16,7 +16,8 @@ namespace TallerMecanicoAPI.Controllers
 
         [HttpGet]
         [RequierePermiso("clientes.ver", Roles = "Administrador,Recepcionista")]
-        public async Task<IActionResult> Get() => Ok(await _service.GetAll());
+        public async Task<IActionResult> Get([FromQuery] ConsultaPaginada consulta) =>
+            consulta.Pagina.HasValue ? Ok(await _service.GetPaginado(consulta)) : Ok(await _service.GetAll());
 
         [HttpGet("{id}")]
         [RequierePermiso("clientes.ver", Roles = "Administrador,Recepcionista")]

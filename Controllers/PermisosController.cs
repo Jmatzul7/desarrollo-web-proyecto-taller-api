@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection;
 using TallerMecanicoAPI.DTOs;
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Services;
 
 namespace TallerMecanicoAPI.Controllers
@@ -51,6 +53,95 @@ namespace TallerMecanicoAPI.Controllers
             {
                 return Conflict(new { mensaje = ex.Message });
             }
+        }
+
+        // ---- Permisos por ROL ----
+        // Se SUMAN a lo que el rol ya trae por defecto (la lista fija de roles de cada acción):
+        // todos los usuarios de ese rol los heredan, sin asignarlos uno por uno.
+
+        [HttpGet("rol/{idRol}")]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> GetDeRol(int idRol)
+        {
+            try
+            {
+                return Ok(await _service.GetDeRol(idRol));
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { mensaje = ex.Message });
+            }
+        }
+
+        [HttpPost("rol/{idRol}")]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> AsignarARol(int idRol, UsuarioPermisoDTOAsignar dto)
+        {
+            try
+            {
+                await _service.AsignarARol(idRol, dto);
+                return Ok();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { mensaje = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { mensaje = ex.Message });
+            }
+        }
+
+        [HttpDelete("rol/{idRol}/{idPermiso}")]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> QuitarDeRol(int idRol, int idPermiso)
+        {
+            try
+            {
+                await _service.QuitarDeRol(idRol, idPermiso);
+                return Ok();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new { mensaje = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new { mensaje = ex.Message });
+            }
+        }
+
+        // Qué roles tienen cada permiso POR DEFECTO (lo declarado en [RequierePermiso(..., Roles = "...")]
+        // de cada acción). Se lee de los propios controladores, así nunca queda desactualizado.
+        [HttpGet("por-defecto")]
+        [Authorize(Roles = "Administrador")]
+        public IActionResult PorDefecto()
+        {
+            var atributos = typeof(PermisosController).Assembly.GetTypes()
+                .Where(t => typeof(ControllerBase).IsAssignableFrom(t))
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                .Select(m => m.GetCustomAttribute<RequierePermisoAttribute>())
+                .Where(a => a != null)
+                .Select(a => a!);
+
+            // "ordenes.ver_todas" no es de un endpoint: define el alcance de la vista de órdenes.
+            var resultado = atributos
+                .GroupBy(a => a.Permiso)
+                .Select(g => new
+                {
+                    permiso = g.Key,
+                    roles = g.SelectMany(a => a.Roles.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                             .Distinct().OrderBy(r => r).ToList()
+                })
+                .ToList();
+
+            resultado.Add(new
+            {
+                permiso = AlcanceOrdenes.Permiso,
+                roles = AlcanceOrdenes.RolesPorDefecto.Split(',').OrderBy(r => r).ToList()
+            });
+
+            return Ok(resultado.OrderBy(x => x.permiso).ToList());
         }
 
         [HttpDelete("usuario/{idUsuario}/{idPermiso}")]

@@ -115,6 +115,8 @@ demás: pasa quien tenga uno de los roles **o** el permiso.
 | `facturas.ver` | Administrador, Recepcionista | `GET /api/facturas` y `/{id}` (menú Facturas) |
 | `facturas.descargar_pdf` | Administrador, Recepcionista | `GET /api/facturas/{id}/pdf` (botón "Descargar PDF") |
 | `usuarios.ver_mecanicos` | Administrador, Recepcionista, Mecanico | `GET /api/catalogos/mecanicos` (lista para asignar mecánicos) |
+| `ordenes.reasignar` | Administrador, Recepcionista | `PATCH /api/ordenestrabajo/{id}/mecanico` `{ "idMecanico": n }` (solo órdenes abiertas, mecánico activo con rol Mecanico) |
+| `ordenes.ver_todas` | Administrador, Recepcionista | Alcance de las órdenes: sin él, el usuario (p. ej. Mecánico) solo ve las órdenes **asignadas a él** (y sus diagnósticos/reparaciones). Las ajenas responden 404 |
 
 Ejemplo: a `bodega1` (Bodeguero) no le aparece el menú Clientes. Si un Administrador
 le asigna `clientes.ver`, en pocos segundos le aparece el menú y puede listar clientes.
@@ -143,6 +145,86 @@ de la tabla de abajo) y un ejemplo real: a `recepcion1` se le asigna
 Administrador.
 
 ---
+
+### 3.3 Permisos por defecto de cada rol
+
+Esto es lo que cada rol puede hacer **sin** tener ningún permiso individual asignado
+(sale de `[RequierePermiso("permiso", Roles = "...")]` en cada controlador). Además, a
+cualquier usuario se le puede dar un permiso suelto desde la pantalla de Permisos.
+
+| Permiso | Administrador | Recepcionista | Mecánico | Bodeguero |
+|---|:-:|:-:|:-:|:-:|
+| `clientes.ver` | ✅ | ✅ | | |
+| `clientes.crear` | ✅ | ✅ | | |
+| `clientes.editar` | ✅ | ✅ | | |
+| `clientes.eliminar` | ✅ | | | |
+| `vehiculos.ver` | ✅ | ✅ | | |
+| `vehiculos.crear` | ✅ | ✅ | | |
+| `vehiculos.editar` | ✅ | ✅ | | |
+| `vehiculos.eliminar` | ✅ | | | |
+| `ordenes.crear` | ✅ | ✅ | | |
+| `ordenes.cambiar_estado` | ✅ | ✅ | ✅ | |
+| `ordenes.eliminar` | ✅ | | | |
+| `diagnosticos.crear` | ✅ | | ✅ | |
+| `diagnosticos.eliminar` | ✅ | | | |
+| `reparaciones.crear` | ✅ | | ✅ | |
+| `reparaciones.autorizar` | ✅ | | | |
+| `reparaciones.cambiar_estado` | ✅ | | ✅ | |
+| `reparaciones.eliminar` | ✅ | | | |
+| `reparaciones.asignar_repuesto` | ✅ | | | ✅ |
+| `reparaciones.quitar_repuesto` | ✅ | | | ✅ |
+| `repuestos.ver` | ✅ | | ✅ | ✅ |
+| `repuestos.crear` | ✅ | | | ✅ |
+| `repuestos.editar` | ✅ | | | ✅ |
+| `repuestos.entrada_stock` | ✅ | | | ✅ |
+| `repuestos.eliminar` | ✅ | | | |
+| `facturas.ver` | ✅ | ✅ | | |
+| `facturas.generar` | ✅ | ✅ | | |
+| `facturas.descargar_pdf` | ✅ | ✅ | | |
+| `usuarios.ver_mecanicos` | ✅ | ✅ | ✅ | |
+
+Sin restricción de permiso (cualquier usuario autenticado): ver y editar su propio perfil,
+cambiar su contraseña, consultar los catálogos y ver órdenes, diagnósticos y reparaciones.
+La gestión de usuarios y de permisos es exclusiva del **Administrador**.
+
+### 3.4 Permisos por rol (herencia)
+
+Además de asignar permisos a un usuario, se pueden asignar a un **rol completo** (tabla
+`RolPermiso`): todos los usuarios de ese rol los heredan, sin asignarlos uno por uno.
+
+- Se **suman** a los que el rol ya trae por defecto (la lista fija `Roles = "..."` de cada acción);
+  no se pueden quitar los de por defecto, solo agregar.
+- Los permisos efectivos de un usuario = los suyos + los de su rol. Viajan juntos como claims
+  `permiso` en el JWT, así que `RequierePermiso` y el frontend no distinguen el origen.
+- Un cambio en un rol llega a sus usuarios en segundos (refresco automático de sesión).
+- El rol **Administrador** ya tiene todo y no se edita.
+- Pantalla: **Permisos → pestaña "Por rol"**. Endpoints (solo Administrador):
+  `GET /api/permisos/rol/{idRol}`, `POST /api/permisos/rol/{idRol}`,
+  `DELETE /api/permisos/rol/{idRol}/{idPermiso}` y `GET /api/permisos/por-defecto`
+  (qué roles tienen cada permiso por defecto, leído de los controladores).
+- Base de datos existente: ejecutar `Migracion_RolPermiso.sql` una vez.
+
+### 3.5 Paginación de los listados
+
+`GET /api/clientes`, `/vehiculos`, `/ordenestrabajo`, `/facturas`, `/repuestos` y `/usuarios`
+aceptan paginación en el servidor. Si **no** se envía `pagina`, devuelven la lista completa de
+siempre (compatibilidad); si se envía, devuelven:
+
+```json
+{ "items": [...], "total": 134, "pagina": 1, "tamano": 10, "totalPaginas": 14 }
+```
+
+| Parámetro | Descripción |
+|---|---|
+| `pagina` | Número de página (desde 1). Si no existe, devuelve la última |
+| `tamano` | Filas por página (por defecto 10, máximo 100) |
+| `buscar` | Texto libre: clientes (nombre, correo, teléfono), vehículos (placa, marca, modelo, cliente), órdenes (# de orden, placa, cliente, mecánico, observaciones), facturas (# de factura u orden, placa, cliente), repuestos (código, nombre), usuarios (usuario, nombre, correo) |
+| `estado` | Solo órdenes: id del estado |
+| `activo` | Clientes, vehículos, repuestos y usuarios: `true` / `false` |
+| `stockBajo` | Solo repuestos: `true` = existencia ≤ 5 |
+
+Orden fijo: clientes/vehículos/repuestos/usuarios alfabético; órdenes y facturas de la más reciente a
+la más antigua. La lógica vive en `Helpers/Paginacion.cs` (`ConsultaPaginada`, `ResultadoPaginado<T>`).
 
 ## 4. Todos los endpoints
 

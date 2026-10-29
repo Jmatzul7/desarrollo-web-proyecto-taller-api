@@ -1,3 +1,4 @@
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.DTOs;
 using TallerMecanicoAPI.Models;
 using TallerMecanicoAPI.Repositories;
@@ -16,6 +17,8 @@ namespace TallerMecanicoAPI.Services
         }
 
         public async Task<List<Vehiculo>> GetAll() => await _repo.GetAll();
+
+        public async Task<ResultadoPaginado<Vehiculo>> GetPaginado(ConsultaPaginada consulta) => await _repo.GetPaginado(consulta);
 
         public async Task<Vehiculo?> GetById(int id) => await _repo.GetById(id);
 

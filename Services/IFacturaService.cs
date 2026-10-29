@@ -1,3 +1,4 @@
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.DTOs;
 using TallerMecanicoAPI.Models;
 
@@ -6,6 +7,7 @@ namespace TallerMecanicoAPI.Services
     public interface IFacturaService
     {
         Task<List<Factura>> GetAll();
+        Task<ResultadoPaginado<Factura>> GetPaginado(ConsultaPaginada consulta);
         Task<Factura?> GetById(int id);
         Task<Factura> Generar(FacturaDTOCreate dto);
 

@@ -33,6 +33,9 @@ namespace TallerMecanicoAPI.Services
         public async Task<List<UsuarioDTOResponse>> GetAll() =>
             (await _repo.GetAll()).Select(ToDto).ToList();
 
+        public async Task<ResultadoPaginado<UsuarioDTOResponse>> GetPaginado(ConsultaPaginada consulta) =>
+            (await _repo.GetPaginado(consulta)).Convertir(ToDto);
+
         public async Task<UsuarioDTOResponse?> GetById(int id)
         {
             var usuario = await _repo.GetById(id);

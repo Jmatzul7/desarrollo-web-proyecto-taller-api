@@ -1,4 +1,5 @@
 using TallerMecanicoAPI.DTOs;
+using TallerMecanicoAPI.Helpers;
 using TallerMecanicoAPI.Models;
 using TallerMecanicoAPI.Repositories;
 
@@ -30,6 +31,8 @@ namespace TallerMecanicoAPI.Services
 
         public async Task<List<Factura>> GetAll() => await _facturaRepo.GetAll();
 
+        public async Task<ResultadoPaginado<Factura>> GetPaginado(ConsultaPaginada consulta) => await _facturaRepo.GetPaginado(consulta);
+
         public async Task<Factura?> GetById(int id) => await _facturaRepo.GetById(id);
 
         public async Task<Factura> Generar(FacturaDTOCreate dto)
@@ -44,12 +47,15 @@ namespace TallerMecanicoAPI.Services
             var idsDiagnostico = diagnosticos.Select(d => d.IdDiagnostico).ToList();
             var reparaciones = await _reparacionRepo.GetByDiagnosticoIds(idsDiagnostico);
 
-            // 5 = Finalizada
-            var reparacionesFinalizadas = reparaciones.Where(r => r.IdEstadoReparacion == 5).ToList();
+            // Regla de flujo: no se factura con reparaciones sin finalizar (pendientes, autorizadas o
+            // en proceso), ni una orden ya facturada o cancelada. Las rechazadas no bloquean.
+            var motivo = FlujoTrabajo.MotivoNoFacturable(
+                orden.IdEstadoOrden, reparaciones.Select(r => r.IdEstadoReparacion).ToList());
+            if (motivo != null)
+                throw new InvalidOperationException(motivo);
 
-            if (reparacionesFinalizadas.Count == 0)
-                throw new InvalidOperationException(
-                    "No hay reparaciones finalizadas para esta orden; no se puede facturar aún.");
+            var reparacionesFinalizadas = reparaciones
+                .Where(r => r.IdEstadoReparacion == FlujoTrabajo.RepFinalizada).ToList();
 
             decimal costoManoObra = reparacionesFinalizadas.Sum(r => r.CostoManoObra ?? 0);
             decimal costoRepuestos = 0;
@@ -71,7 +77,7 @@ namespace TallerMecanicoAPI.Services
 
             await _facturaRepo.Add(factura);
 
-            orden.IdEstadoOrden = 5; // Facturada
+            orden.IdEstadoOrden = FlujoTrabajo.OrdenFacturada;
             orden.FechaSalida ??= DateTime.Now;
             await _ordenRepo.Update(orden);
 
